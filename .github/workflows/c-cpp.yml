@@ -66,7 +66,8 @@ jobs:
           find . -type f -exec ls -lh {} \;
 
       - name: Upload Complete Build Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: rtl8188fu-driver-artifacts
+          include-hidden-files: true
           path: ./**/*

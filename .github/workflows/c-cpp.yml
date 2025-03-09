@@ -1,0 +1,72 @@
+name: Build CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build_and_upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential linux-headers-$(uname -r) dkms
+
+      - name: Configure
+        run: |
+          # Only run configure if it exists (some kernel modules don't need this step)
+          if [ -f "./configure" ]; then
+            ./configure
+          else
+            echo "No configure script found, skipping configure step"
+          fi
+
+      - name: Build Project
+        run: |
+          make clean
+          make
+
+      - name: Run Tests (make check)
+        run: |
+          # Only run make check if supported by the project
+          if grep -q "check:" Makefile; then
+            make check
+          else
+            echo "make check not available in this project, skipping"
+          fi
+          
+      - name: Make Distribution Check
+        run: |
+          # Only run make distcheck if supported by the project
+          if grep -q "distcheck:" Makefile; then
+            make distcheck
+          else
+            echo "make distcheck not available in this project, skipping"
+          fi
+
+      - name: Verify the build
+        run: |
+          if [ -f 8188fu.ko ]; then
+            echo "Build succeeded"
+          else
+            echo "Build failed"
+            exit 1
+          fi
+
+      - name: List Build Output (for debugging)
+        run: |
+          echo "Listing all files after build:"
+          find . -type f -exec ls -lh {} \;
+
+      - name: Upload Complete Build Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: rtl8188fu-driver-artifacts
+          path: ./**/*
